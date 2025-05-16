@@ -1,0 +1,63 @@
+/* Main container to split the layout into 30% and 70% */
+.container {
+    display: flex;
+    width: 100%;
+    border-left: 2px solid black; /* Vertical line separating 30% and 70% */
+  }
+  
+  /* 30% section for estimated arrival */
+  .estimatedArrival {
+    width: 30%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-right: 2px solid black;
+  }
+  
+  /* 70% section with squares and cost */
+  .details {
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+  }
+  
+  /* Grid container for the squares in a horizontal row */
+  .squaresContainer {
+    display: flex; /* Changed to flexbox for horizontal alignment */
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap; /* Ensures squares fit in one row or wrap if needed */
+  }
+  
+  /* Style for each small square */
+  .square {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    width: 100px; /* Reduced width */
+    height: 100px; /* Reduced height */
+  }
+  
+  /* Style for the larger square containing estimated cost */
+  .largeSquare {
+    margin-top: 20px;
+    padding: 40px;
+    background-color: #f8f8f8;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 200px;
+    height: 150px;
+  }
+  
