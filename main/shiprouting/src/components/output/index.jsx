@@ -1,49 +1,62 @@
 import React from "react";
 import styles from "./output.module.css"; // Import CSS module
 
-const Output = () => {
+const Output = ({ routeData }) => {
+  // If no data is available yet
+  if (!routeData || !routeData.metrics) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.noData}>
+          Select start and end points on the map and calculate a route to see the results.
+        </div>
+      </div>
+    );
+  }
+  
+  const { metrics } = routeData;
+
   return (
     <div className={styles.container}>
       {/* 30% Section */}
       <div className={styles.estimatedArrival}>
-        <h3>Estimated Arrival Date</h3>
-        <h3>12th October 2024</h3> {/* Placeholder date */}
+        <h3>Estimated Arrival</h3>
+        <h3>{metrics.estimatedArrival}</h3>
       </div>
 
-      {/* 70% Section with vertical divider */}
+      {/* 70% Section with details */}
       <div className={styles.details}>
         <div className={styles.squaresContainer}>
-          {/* Arrange six small squares */}
+          {/* Metrics in small squares */}
           <div className={styles.square}>
             <h4>Total Distance</h4>
-            <p>5000 km</p> {/* Placeholder distance */}
+            <p>{metrics.totalDistance} km</p>
           </div>
           <div className={styles.square}>
-            <h4>Total Distance</h4>
-            <p>3000 km</p> {/* Placeholder distance */}
+            <h4>Travel Time</h4>
+            <p>{metrics.travelTime} hours</p>
           </div>
           <div className={styles.square}>
-            <h4>Total Distance</h4>
-            <p>2000 km</p> {/* Placeholder distance */}
+            <h4>Fuel Consumption</h4>
+            <p>{metrics.fuelConsumption} units</p>
           </div>
           <div className={styles.square}>
-            <h4>Total Distance</h4>
-            <p>1000 km</p> {/* Placeholder distance */}
+            <h4>CO₂ Emissions</h4>
+            <p>{metrics.co2Emissions} tons</p>
           </div>
           <div className={styles.square}>
-            <h4>Total Distance</h4>
-            <p>7000 km</p> {/* Placeholder distance */}
+            <h4>Port Fees</h4>
+            <p>${metrics.portFees}</p>
           </div>
           <div className={styles.square}>
-            <h4>Total Distance</h4>
-            <p>4000 km</p> {/* Placeholder distance */}
+            <h4>Waypoints</h4>
+            <p>{(routeData.route?.length || 2) - 2}</p>
           </div>
+        </div>
 
-          {/* Larger square for Estimated Cost, aligned on the right */}
-          <div className={styles.largeSquare}>
-            <h4>Estimated Cost</h4>
-            <p>$15,000</p> {/* Placeholder cost */}
-          </div>
+        {/* Larger square for Estimated Cost */}
+        <div className={styles.largeSquare}>
+          <h4>Estimated Total Cost</h4>
+          <p>${metrics.estimatedCost.toLocaleString()}</p>
         </div>
       </div>
     </div>

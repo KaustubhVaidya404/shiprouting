@@ -2,7 +2,12 @@
 .container {
     display: flex;
     width: 100%;
-    border-left: 2px solid black; /* Vertical line separating 30% and 70% */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-top: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    background-color: white;
   }
   
   /* 30% section for estimated arrival */
@@ -13,7 +18,19 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    border-right: 2px solid black;
+    border-right: 1px solid #ddd;
+    background-color: #f8f9fa;
+    text-align: center;
+  }
+  
+  .estimatedArrival h3 {
+    color: #333;
+    margin: 0 0 10px 0;
+  }
+  
+  .estimatedArrival h3:last-child {
+    color: #4a90e2;
+    font-size: 1.5rem;
   }
   
   /* 70% section with squares and cost */
@@ -26,10 +43,10 @@
   
   /* Grid container for the squares in a horizontal row */
   .squaresContainer {
-    display: flex; /* Changed to flexbox for horizontal alignment */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
     justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap; /* Ensures squares fit in one row or wrap if needed */
   }
   
   /* Style for each small square */
@@ -38,26 +55,68 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 10px;
-    background-color: #f0f0f0;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    width: 100px; /* Reduced width */
-    height: 100px; /* Reduced height */
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    width: calc(33% - 10px);
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .square:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .square h4 {
+    color: #666;
+    margin: 0 0 5px 0;
+    font-size: 0.9rem;
+  }
+  
+  .square p {
+    color: #333;
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 500;
   }
   
   /* Style for the larger square containing estimated cost */
   .largeSquare {
     margin-top: 20px;
-    padding: 40px;
-    background-color: #f8f8f8;
-    border-radius: 5px;
-    border: 1px solid #ccc;
+    padding: 20px;
+    background-color: #4a90e2;
+    color: white;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 200px;
-    height: 150px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
   }
   
+  .largeSquare h4 {
+    margin: 0 0 5px 0;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .largeSquare p {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+  
+  .noData {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    font-style: italic;
+    color: #888;
+    text-align: center;
+  }

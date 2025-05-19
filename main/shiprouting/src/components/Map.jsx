@@ -1,13 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
   useMapEvents,
+  Polyline,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import styles from "./map.module.css";
+
+// Fix for Leaflet default icon issue
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 // Create a custom icon using emoji
 const createEmojiIcon = (emoji) => {
@@ -35,11 +50,24 @@ const MapClickHandler = ({
   return null;
 };
 
-const MapComponent = () => {
+const MapComponent = ({ onPositionsChange, routeData }) => {
   const [startPosition, setStartPosition] = useState(null);
   const [endPosition, setEndPosition] = useState(null);
-  const [confirmed, setConfirmed] = useState(false);
   const [info, setInfo] = useState({ startInfo: "", endInfo: "" });
+
+  // Update the parent component when positions change
+  useEffect(() => {
+    if (startPosition && endPosition) {
+      onPositionsChange({
+        startLat: startPosition.lat,
+        startLng: startPosition.lng,
+        endLat: endPosition.lat,
+        endLng: endPosition.lng,
+        startInfo: info.startInfo,
+        endInfo: info.endInfo,
+      });
+    }
+  }, [startPosition, endPosition, info, onPositionsChange]);
 
   const handleMarkerClick = (positionType) => {
     if (positionType === "start") {
@@ -51,17 +79,16 @@ const MapComponent = () => {
     }
   };
 
-  const handleConfirm = () => {
-    setConfirmed(true);
-  };
-
   const handleInfoChange = (e) => {
     const { name, value } = e.target;
     setInfo((prevInfo) => ({ ...prevInfo, [name]: value }));
   };
 
+  // Create route path coordinates from route data if available
+  const routePath = routeData?.route?.map((point) => [point[0], point[1]]) || [];
+
   return (
-    <div>
+    <div className={styles.mapContainer}>
       <MapContainer
         center={[-20, 80]} // Center in the Indian Ocean region
         zoom={4}
@@ -110,60 +137,58 @@ const MapComponent = () => {
             </Popup>
           </Marker>
         )}
+
+        {/* Display the route if available */}
+        {routePath.length > 0 && (
+          <Polyline
+            positions={routePath}
+            color="blue"
+            weight={3}
+            opacity={0.7}
+          />
+        )}
+
+        {/* Display waypoints if available */}
+        {routePath.length > 2 &&
+          routePath.slice(1, -1).map((point, index) => (
+            <Marker
+              key={`waypoint-${index}`}
+              position={point}
+              icon={createEmojiIcon("⚓")}
+            >
+              <Popup>Waypoint {index + 1}</Popup>
+            </Marker>
+          ))}
       </MapContainer>
 
-      {!confirmed && (
-        <div style={{ marginTop: "10px" }}>
-          <div>
-            <label>
-              Starting Point Info:
-              <input
-                type="text"
-                name="startInfo"
-                value={info.startInfo}
-                onChange={handleInfoChange}
-                disabled={!startPosition}
-              />
-            </label>
-          </div>
-          <div>
-            <label>
-              Ending Point Info:
-              <input
-                type="text"
-                name="endInfo"
-                value={info.endInfo}
-                onChange={handleInfoChange}
-                disabled={!endPosition}
-              />
-            </label>
-          </div>
-          <button
-            onClick={handleConfirm}
-            disabled={!startPosition || !endPosition}
-          >
-            Confirm Points
-          </button>
+      <div className={styles.mapControls}>
+        <div>
+          <label>
+            Starting Point Info:
+            <input
+              type="text"
+              name="startInfo"
+              value={info.startInfo}
+              onChange={handleInfoChange}
+              disabled={!startPosition}
+              className={styles.inputField}
+            />
+          </label>
         </div>
-      )}
-
-      {confirmed && (
-        <div style={{ marginTop: "10px" }}>
-          <h3>Points Confirmed</h3>
-          <p>
-            Starting Point:{" "}
-            {startPosition
-              ? `${startPosition.lat}, ${startPosition.lng}`
-              : "N/A"}
-          </p>
-          <p>
-            Ending Point:{" "}
-            {endPosition ? `${endPosition.lat}, ${endPosition.lng}` : "N/A"}
-          </p>
-          <p>Starting Point Info: {info.startInfo || "N/A"}</p>
-          <p>Ending Point Info: {info.endInfo || "N/A"}</p>
+        <div>
+          <label>
+            Ending Point Info:
+            <input
+              type="text"
+              name="endInfo"
+              value={info.endInfo}
+              onChange={handleInfoChange}
+              disabled={!endPosition}
+              className={styles.inputField}
+            />
+          </label>
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -1,0 +1,88 @@
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Inter', sans-serif;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.app-header h1 {
+  color: #2c3e50;
+  font-size: 2.5rem;
+  margin-bottom: 5px;
+}
+
+.app-header p {
+  color: #7f8c8d;
+  font-size: 1rem;
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.app-section {
+  margin-bottom: 30px;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.two-column-layout {
+  display: flex;
+  gap: 20px;
+  flex-direction: row;
+}
+
+@media (max-width: 768px) {
+  .two-column-layout {
+    flex-direction: column;
+  }
+}
+
+.map-column {
+  flex: 1;
+  min-width: 0; /* Fix for flexbox items with overflow */
+}
+
+.form-column {
+  flex: 1;
+  min-width: 0; /* Fix for flexbox items with overflow */
+}
+
+.loading-indicator {
+  padding: 15px;
+  text-align: center;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  color: #4a90e2;
+  font-weight: bold;
+}
+
+.error-message {
+  padding: 15px;
+  text-align: center;
+  background-color: #ffeded;
+  border-radius: 8px;
+  color: #e74c3c;
+}
+
+.app-footer {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  text-align: center;
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}

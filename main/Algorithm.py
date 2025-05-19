@@ -2,6 +2,7 @@ import numpy as np
 import networkx as nx
 from geopy.distance import geodesic
 import folium
+from datetime import datetime, timedelta
 
 # Function to calculate fuel consumption
 def calculate_fuel_consumption(distance):
@@ -10,12 +11,12 @@ def calculate_fuel_consumption(distance):
 # Function to calculate travel time
 def calculate_travel_time(distance):
     speed = 20  # Example: average speed in knots
-    return distance / speed
+    return distance / speed  # Returns time in hours
 
 # Function to assess safety
 def safety_assessment(point):
     lat, lon = point
-    return 1 / (1 + np.sqrt(lat**2 + lon**2))  # Mock safety score
+    return 1 / (1 + np.sqrt(abs(lat)**2 + abs(lon)**2))  # Mock safety score
 
 # Function to assess comfort
 def comfort_assessment(point):
@@ -23,7 +24,7 @@ def comfort_assessment(point):
     return np.cos(np.radians(lat)) * np.sin(np.radians(lon))  # Mock comfort score
 
 # Function to add edges to the graph
-def add_edge(G, point1, point2, fuel_weight, time_weight, safety_weight, comfort_weight):
+def add_edge(G, point1, point2, fuel_weight, time_weight, safety_weight, shortest_weight):
     distance = geodesic(point1, point2).kilometers
     fuel_consumption = calculate_fuel_consumption(distance)
     travel_time = calculate_travel_time(distance)
@@ -33,29 +34,53 @@ def add_edge(G, point1, point2, fuel_weight, time_weight, safety_weight, comfort
     weight = (fuel_weight * fuel_consumption +
               time_weight * travel_time -
               safety_weight * safety_score +
-              comfort_weight * comfort_score)
+              shortest_weight * distance)
     
-    G.add_edge(point1, point2, weight=weight)
+    G.add_edge(point1, point2, weight=max(0.001, weight))
 
 # Function to create a graph and find the optimal route
-def create_graph_and_find_route(start_port, end_port, fuel_weight, time_weight, safety_weight, comfort_weight):
+def create_graph_and_find_route(start_port, end_port, fuel_weight, time_weight, safety_weight, shortest_weight):
     G = nx.Graph()
 
     # Define a grid of potential waypoints in the region
-    latitude_range = np.linspace(10, 20, 5)
-    longitude_range = np.linspace(70, 80, 5)
+    lat_min = min(start_port[0], end_port[0]) - 5
+    lat_max = max(start_port[0], end_port[0]) + 5
+    lon_min = min(start_port[1], end_port[1]) - 5
+    lon_max = max(start_port[1], end_port[1]) + 5
+    
+    latitude_range = np.linspace(lat_min, lat_max, 4)
+    longitude_range = np.linspace(lon_min, lon_max, 4)
     waypoints = [(lat, lon) for lat in latitude_range for lon in longitude_range]
+    waypoints = [(float(lat), float(lon)) for lat, lon in waypoints]  # Convert to float
 
+    # Add start and end ports
+    start_port = (float(start_port[0]), float(start_port[1]))
+    end_port = (float(end_port[0]), float(end_port[1]))
+    
+    # Add waypoints to the graph
+    for waypoint in waypoints:
+        G.add_node(waypoint)
+    
+    G.add_node(start_port)
+    G.add_node(end_port)
+
+    # Add edges between waypoints
     for i in range(len(waypoints)):
         for j in range(i + 1, len(waypoints)):
-            add_edge(G, waypoints[i], waypoints[j], fuel_weight, time_weight, safety_weight, comfort_weight)
+            add_edge(G, waypoints[i], waypoints[j], fuel_weight, time_weight, safety_weight, shortest_weight)
 
+    # Connect start and end to waypoints
     for waypoint in waypoints:
-        add_edge(G, start_port, waypoint, fuel_weight, time_weight, safety_weight, comfort_weight)
-        add_edge(G, waypoint, end_port, fuel_weight, time_weight, safety_weight, comfort_weight)
+        add_edge(G, start_port, waypoint, fuel_weight, time_weight, safety_weight, shortest_weight)
+        add_edge(G, waypoint, end_port, fuel_weight, time_weight, safety_weight, shortest_weight)
 
-    shortest_path = nx.shortest_path(G, source=start_port, target=end_port, weight='weight')
-    return shortest_path
+    # Find the shortest path
+    try:
+        shortest_path = nx.shortest_path(G, source=start_port, target=end_port, weight='weight')
+        return shortest_path
+    except nx.NetworkXNoPath:
+        # If no path is found, return direct route
+        return [start_port, end_port]
 
 # Function to visualize multiple routes on the same map
 def visualize_routes_on_map(routes, start_port, end_port):
@@ -76,7 +101,7 @@ def visualize_routes_on_map(routes, start_port, end_port):
     map_route.save("combined_optimal_routes_map.html")
     print("Map saved as 'combined_optimal_routes_map.html'")
 
-# Main function to handle user input and generate maps
+# Main function is kept for backward compatibility
 def main():
     # Take user input for start and end locations
     start_lat = float(input("Enter start latitude: "))
@@ -88,9 +113,9 @@ def main():
     end_port = (end_lat, end_lon)
 
     # Create routes optimized for different criteria
-    route_fuel = create_graph_and_find_route(start_port, end_port, fuel_weight=1, time_weight=0, safety_weight=0, comfort_weight=0)
-    route_time = create_graph_and_find_route(start_port, end_port, fuel_weight=0, time_weight=1, safety_weight=0, comfort_weight=0)
-    route_safety_comfort = create_graph_and_find_route(start_port, end_port, fuel_weight=0, time_weight=0, safety_weight=0.5, comfort_weight=0.5)
+    route_fuel = create_graph_and_find_route(start_port, end_port, fuel_weight=1, time_weight=0, safety_weight=0, shortest_weight=0)
+    route_time = create_graph_and_find_route(start_port, end_port, fuel_weight=0, time_weight=1, safety_weight=0, shortest_weight=0)
+    route_safety_comfort = create_graph_and_find_route(start_port, end_port, fuel_weight=0, time_weight=0, safety_weight=0.5, shortest_weight=0.5)
 
     # Visualize all routes on the same map
     visualize_routes_on_map([route_fuel, route_time, route_safety_comfort], start_port, end_port)
