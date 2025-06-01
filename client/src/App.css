@@ -1,0 +1,24 @@
+/* Additional CSS styling for App component */
+.App {
+  text-align: center;
+}
+
+/* Responsive container adjustments */
+@media (max-width: 640px) {
+  .container {
+    width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Ensure minimum content area height */
+main {
+  min-height: calc(100vh - 140px);
+}
+
+/* Override Leaflet controls to work better with Tailwind */
+.leaflet-control-container .leaflet-top,
+.leaflet-control-container .leaflet-bottom {
+  z-index: 400;
+}
