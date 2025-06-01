@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FaShip, FaRegClock, FaMapMarkedAlt, FaDownload, FaTable, FaChartBar } from 'react-icons/fa';
 
 const ResultsPanel = ({ route }) => {
   const [activeTab, setActiveTab] = useState('summary');
@@ -13,10 +14,43 @@ const ResultsPanel = ({ route }) => {
     return `${days} days, ${remainingHours} hours`;
   };
 
-  // Safe number formatting
+  // Safe number formatting - improved to handle string values
   const formatNumber = (value, decimals = 1) => {
-    if (value === null || value === undefined) return "N/A";
-    return value.toFixed(decimals);
+    // First ensure value is a number (convert from string if needed)
+    const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+    
+    // Check if we have a valid number after conversion
+    if (isNaN(num) || num === null || num === undefined) {
+      console.log('Invalid number value:', value); // Debug log
+      return "N/A";
+    }
+    
+    return num.toFixed(decimals);
+  };
+
+  // Debug log to inspect route object
+  console.log('Route object:', route);
+  console.log('Total distance type:', typeof route.totalDistanceNm);
+  console.log('Total distance value:', route.totalDistanceNm);
+
+  // Handle CSV download
+  const handleDownloadCsv = () => {
+    if (!route.nodes || route.nodes.length === 0) return;
+    
+    const headers = "Port,ID,Latitude,Longitude,Distance (nm),ETA (hours)\n";
+    const rows = route.nodes.map(node => 
+      `${node.name || 'Unknown'},${node.portId || 'N/A'},${node.latitude || 0},${node.longitude || 0},${node.cumulativeDistanceNm || 0},${node.etaHours || 0}`
+    ).join('\n');
+    const csvContent = `data:text/csv;charset=utf-8,${headers}${rows}`;
+    
+    // Create download link
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'route_data.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -46,17 +80,26 @@ const ResultsPanel = ({ route }) => {
         </button>
       </div>
       
-      <div className="p-4">
+      <div className="p-5">
         {activeTab === 'summary' && (
-          <div>
-            <div className="mb-2">
-              <span className="font-medium">Total Distance:</span> {formatNumber(route.totalDistanceNm)} nautical miles
-            </div>
-            <div className="mb-2">
-              <span className="font-medium">Estimated Time:</span> {formatTime(route.totalTimeHours)}
-            </div>
-            <div className="mb-2">
-              <span className="font-medium">Number of Waypoints:</span> {route.hops}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <div className="text-blue-500 mb-1">Total Distance</div>
+                <div className="text-2xl font-bold text-blue-800">
+                  {route.totalDistanceNm ? formatNumber(route.totalDistanceNm) : "N/A"} nm
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                <div className="text-green-500 mb-1">Estimated Time</div>
+                <div className="text-2xl font-bold text-green-800">{formatTime(route.totalTimeHours)}</div>
+              </div>
+              
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                <div className="text-purple-500 mb-1">Waypoints</div>
+                <div className="text-2xl font-bold text-purple-800">{route.hops}</div>
+              </div>
             </div>
           </div>
         )}
@@ -87,32 +130,19 @@ const ResultsPanel = ({ route }) => {
         {activeTab === 'export' && (
           <div>
             <button 
-              className="mb-4 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onClick={() => {
-                // Create CSV content
-                if (!route.nodes || route.nodes.length === 0) return;
-                
-                const headers = "Port,ID,Latitude,Longitude,Distance (nm),ETA (hours)\n";
-                const rows = route.nodes.map(node => 
-                  `${node.name || 'Unknown'},${node.portId || 'N/A'},${node.latitude || 0},${node.longitude || 0},${node.cumulativeDistanceNm || 0},${node.etaHours || 0}`
-                ).join('\n');
-                const csvContent = `data:text/csv;charset=utf-8,${headers}${rows}`;
-                
-                // Create download link
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement('a');
-                link.setAttribute('href', encodedUri);
-                link.setAttribute('download', 'route_data.csv');
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }}
+              className="mb-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center shadow-sm"
+              onClick={handleDownloadCsv}
             >
-              Download CSV
+              <FaDownload className="mr-2" /> Download as CSV
             </button>
             
-            <div className="bg-gray-100 p-3 rounded overflow-auto max-h-40">
-              <pre className="text-xs">{JSON.stringify(route, null, 2)}</pre>
+            <div className="flex flex-col space-y-2">
+              <div className="font-medium text-slate-700 flex items-center">
+                <FaTable className="mr-2" /> Raw Route Data:
+              </div>
+              <div className="bg-slate-50 p-3 rounded-md border border-slate-200 overflow-auto max-h-40">
+                <pre className="text-xs">{JSON.stringify(route, null, 2)}</pre>
+              </div>
             </div>
           </div>
         )}

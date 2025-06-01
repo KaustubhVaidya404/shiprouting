@@ -281,27 +281,51 @@ class PathfindingService {
     });
     
     // Add intermediate waypoints
+    let currentDistance = 0;
+    let currentEta = 0;
+    
     for (let i = 1; i < portIds.length; i++) {
       const portId = portIds[i];
       if (portId === startPort.id) continue; // Skip if it's the start port again
       
       const port = await PortModel.getPortById(portId);
       
+      // Calculate segment distance between previous port and current port
+      const prevPort = await PortModel.getPortById(portIds[i-1]);
+      const segmentDistance = this.haversineDistance(
+        parseFloat(prevPort.latitude), 
+        parseFloat(prevPort.longitude),
+        parseFloat(port.latitude), 
+        parseFloat(port.longitude)
+      );
+      
+      // Update cumulative values
+      currentDistance += segmentDistance;
+      currentEta += segmentDistance / shipType.max_speed_knots;
+      
       nodes.push({
         portId: port.id,
         name: port.name,
         latitude: parseFloat(port.latitude),
         longitude: parseFloat(port.longitude),
-        cumulativeDistanceNm: Math.round(routeResult.cumulativeDistance * 100) / 100,
-        etaHours: Math.round(routeResult.etaHours * 10) / 10
+        cumulativeDistanceNm: Math.round(currentDistance * 100) / 100,
+        etaHours: Math.round(currentEta * 10) / 10
       });
     }
+    
+    // Use the final node's values for total distance/time
+    const totalDistance = nodes.length > 1 ? nodes[nodes.length-1].cumulativeDistanceNm : 0;
+    const totalTime = nodes.length > 1 ? nodes[nodes.length-1].etaHours : 0;
+    
+    // For debugging
+    console.log('Total distance calculated:', totalDistance);
+    console.log('A* cumulative distance:', routeResult.cumulativeDistance);
     
     return {
       route: {
         nodes,
-        totalDistanceNm: Math.round(routeResult.cumulativeDistance * 100) / 100,
-        totalTimeHours: Math.round(routeResult.etaHours * 10) / 10,
+        totalDistanceNm: totalDistance,
+        totalTimeHours: totalTime,
         hops: nodes.length - 1
       }
     };
