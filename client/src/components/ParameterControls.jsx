@@ -160,6 +160,20 @@ const ParameterControls = ({ weights, avoid, onWeightsChange, onAvoidChange }) =
             Avoid High Piracy Risk Zones
           </label>
         </div>
+
+        <div className="flex items-center mb-2">
+          <input
+            type="checkbox"
+            id="avoid-weather"
+            checked={avoid.weather || false}
+            onChange={() => onAvoidChange({ ...avoid, weather: !avoid.weather })}
+            className="w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500"
+            aria-label="Avoid Severe Weather"
+          />
+          <label htmlFor="avoid-weather" className="ml-2 text-sm font-medium text-gray-700">
+            Avoid Severe Weather
+          </label>
+        </div>
       </div>
     </div>
   );

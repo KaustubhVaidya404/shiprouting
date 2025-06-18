@@ -86,12 +86,29 @@ export const computeRoute = async (params) => {
   }
 };
 
+/**
+ * Fetch weather for given coordinates
+ * @param {number} lat
+ * @param {number} lon
+ * @returns {Promise<Object>}
+ */
+export const fetchWeather = async (lat, lon) => {
+  try {
+    const response = await apiClient.get(`/weather?lat=${lat}&lon=${lon}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching weather:', error);
+    throw error;
+  }
+};
+
 // Create a named API object for export
 const apiService = {
   fetchPorts,
   fetchShipTypes,
   fetchCargoTypes,
-  computeRoute
+  computeRoute,
+  fetchWeather
 };
 
 export default apiService;

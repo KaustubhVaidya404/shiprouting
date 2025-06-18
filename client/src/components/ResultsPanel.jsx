@@ -1,9 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaShip, FaRegClock, FaMapMarkedAlt, FaDownload, FaTable, FaChartBar } from 'react-icons/fa';
+import { fetchWeather } from '../services/api';
 
 const ResultsPanel = ({ route }) => {
   const [activeTab, setActiveTab] = useState('summary');
-  
+  const [startWeather, setStartWeather] = useState(null);
+  const [endWeather, setEndWeather] = useState(null);
+
+  useEffect(() => {
+    const fetchWeatherData = async () => {
+      if (!route || !route.nodes || route.nodes.length === 0) return;
+      try {
+        const start = route.nodes[0];
+        const end = route.nodes[route.nodes.length - 1];
+        const [w1, w2] = await Promise.all([
+          fetchWeather(start.latitude, start.longitude),
+          fetchWeather(end.latitude, end.longitude)
+        ]);
+        setStartWeather(w1);
+        setEndWeather(w2);
+      } catch {
+        setStartWeather(null);
+        setEndWeather(null);
+      }
+    };
+    fetchWeatherData();
+  }, [route]);
+
   if (!route) return null;
   
   // Format time display
@@ -99,6 +122,30 @@ const ResultsPanel = ({ route }) => {
               <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
                 <div className="text-purple-500 mb-1">Waypoints</div>
                 <div className="text-2xl font-bold text-purple-800">{route.hops}</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="bg-sky-50 p-3 rounded border">
+                <div className="font-medium mb-1">Start Port Weather</div>
+                {startWeather ? (
+                  <div>
+                    <img src={`https://openweathermap.org/img/wn/${startWeather.weather.icon}@2x.png`} alt={startWeather.weather.description} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                    <span className="ml-2">{startWeather.weather.main}, {startWeather.temp}°C, Wind: {startWeather.wind.speed} m/s</span>
+                  </div>
+                ) : (
+                  <span className="text-gray-500">Loading...</span>
+                )}
+              </div>
+              <div className="bg-sky-50 p-3 rounded border">
+                <div className="font-medium mb-1">End Port Weather</div>
+                {endWeather ? (
+                  <div>
+                    <img src={`https://openweathermap.org/img/wn/${endWeather.weather.icon}@2x.png`} alt={endWeather.weather.description} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                    <span className="ml-2">{endWeather.weather.main}, {endWeather.temp}°C, Wind: {endWeather.wind.speed} m/s</span>
+                  </div>
+                ) : (
+                  <span className="text-gray-500">Loading...</span>
+                )}
               </div>
             </div>
           </div>

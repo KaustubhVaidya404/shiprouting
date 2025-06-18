@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { fetchWeather } from '../services/api';
 
 // Fix Leaflet marker icons
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -38,7 +39,8 @@ const MapView = ({ route, isLoading }) => {
   const [mapCenter, setMapCenter] = useState([20, 0]); // Default center
   const [zoom, setZoom] = useState(2); // Default zoom
   const mapRef = useRef(null);
-  
+  const [weatherData, setWeatherData] = useState({});
+
   // Update map center when route changes
   useEffect(() => {
     if (route && route.nodes && route.nodes.length > 0) {
@@ -49,6 +51,29 @@ const MapView = ({ route, isLoading }) => {
         setZoom(4);
       }
     }
+  }, [route]);
+
+  // Fetch weather for route nodes
+  useEffect(() => {
+    const fetchAllWeather = async () => {
+      if (!route || !route.nodes) return;
+      const promises = route.nodes.map(async (node) => {
+        if (!node.latitude || !node.longitude) return null;
+        try {
+          const weather = await fetchWeather(node.latitude, node.longitude);
+          return { portId: node.portId, weather };
+        } catch {
+          return null;
+        }
+      });
+      const results = await Promise.all(promises);
+      const weatherMap = {};
+      results.forEach(item => {
+        if (item && item.portId) weatherMap[item.portId] = item.weather;
+      });
+      setWeatherData(weatherMap);
+    };
+    fetchAllWeather();
   }, [route]);
 
   // Extract route coordinates for the polyline
@@ -93,7 +118,7 @@ const MapView = ({ route, isLoading }) => {
         
         {route && route.nodes && route.nodes.map((node, index) => {
           if (!node || node.latitude == null || node.longitude == null) return null;
-          
+          const weather = weatherData[node.portId];
           return (
             <Marker 
               key={`${node.portId || 'port'}-${index}`}
@@ -106,6 +131,14 @@ const MapView = ({ route, isLoading }) => {
                   <p>Position: {formatNumber(node.latitude)}, {formatNumber(node.longitude)}</p>
                   <p>Distance from start: {formatNumber(node.cumulativeDistanceNm, 1)} nm</p>
                   <p>ETA: {node.etaHours != null ? `${(node.etaHours / 24).toFixed(1)} days (${formatNumber(node.etaHours, 1)} hours)` : 'N/A'}</p>
+                  {weather && (
+                    <div className="mt-2">
+                      <div>
+                        <img src={`https://openweathermap.org/img/wn/${weather.weather.icon}@2x.png`} alt={weather.weather.description} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                        <span className="ml-2">{weather.weather.main}, {weather.temp}°C, Wind: {weather.wind.speed} m/s</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </Popup>
               <Tooltip permanent={index === 0 || index === (route.nodes.length - 1)}>
