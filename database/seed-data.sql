@@ -116,3 +116,9 @@ INSERT INTO cargo_types (id, name, forbidden_edges, notes) VALUES
 ('HAZ_LQD', 'Liquid Hazardous', '{7}', 'Hazardous liquids with restrictions through Panama Canal'),
 ('HAZ_EXP', 'Explosives', '{4,7}', 'Explosives with special routing requirements'),
 ('PERISHABLE', 'Perishable Goods', '{}', 'Requires expedited routing');
+
+-- For every edge, add the reverse unless forbidden
+INSERT INTO edges (start_port_id, end_port_id, distance_nm, min_depth_m, risk_factor, is_canal_suez, is_canal_panama, forbidden_for_hazard)
+SELECT end_port_id, start_port_id, distance_nm, min_depth_m, risk_factor, is_canal_suez, is_canal_panama, forbidden_for_hazard
+FROM edges
+WHERE (end_port_id, start_port_id) NOT IN (SELECT start_port_id, end_port_id FROM edges);

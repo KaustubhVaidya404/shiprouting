@@ -30,7 +30,12 @@ class RouteController {
         weights,
         avoid
       });
-      
+
+      // Add fuel consumption to response if available
+      if (result.route && result.route.nodes && result.route.nodes.length > 0) {
+        result.route.totalFuelTons = result.route.nodes[result.route.nodes.length - 1].fuelTons || null;
+      }
+
       res.json(result);
     } catch (error) {
       console.error('Error computing route:', error);

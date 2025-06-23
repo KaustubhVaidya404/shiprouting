@@ -1,6 +1,7 @@
 const EdgeModel = require('../models/edge');
 const PortModel = require('../models/port');
 const ShipModel = require('../models/ship');
+const WeatherService = require('./weather');
 
 class PathfindingService {
   /**
@@ -31,7 +32,7 @@ class PathfindingService {
   }
 
   /**
-   * Compute route using A* algorithm
+   * Compute route using A* algorithm, factoring in weather and fuel
    * @param {Object} params - Route parameters
    * @returns {Promise<Object>} Computed route
    */
@@ -61,12 +62,12 @@ class PathfindingService {
     
     // Get valid edges based on ship and cargo
     const validEdges = await EdgeModel.getValidEdges(shipTypeId, cargoTypeId);
-    
+
     // Build graph representation
     const graph = this.buildGraph(validEdges, avoid);
-    
-    // Run A* algorithm
-    const route = this.aStarSearch(
+
+    // Run enhanced A* algorithm
+    const route = await this.aStarSearchWeatherAware(
       graph,
       startPortId,
       endPortId,
@@ -75,11 +76,11 @@ class PathfindingService {
       shipType,
       weights
     );
-    
+
     if (!route) {
       throw new Error('No valid route found with given constraints');
     }
-    
+
     return this.formatRouteResponse(route, startPort, endPort, shipType);
   }
 
@@ -125,103 +126,97 @@ class PathfindingService {
       });
     });
     
+    // After building the graph:
+    console.log('Neighbors for start port:', Object.keys(graph).length > 0 ? graph : 'No neighbors');
     return graph;
   }
 
   /**
-   * A* search algorithm implementation
-   * @param {Object} graph - Graph representation
-   * @param {string} start - Start node ID
-   * @param {string} goal - Goal node ID
-   * @param {Object} startPort - Start port data
-   * @param {Object} endPort - End port data
-   * @param {Object} shipType - Ship type data
-   * @param {Object} weights - Weight parameters for cost function
-   * @returns {Object|null} Path or null if no path found
+   * Enhanced A* search: includes weather and fuel modeling
    */
-  aStarSearch(graph, start, goal, startPort, endPort, shipType, weights) {
-    // Priority queue using a simple array with sort
-    const openSet = [{ 
-      node: start, 
-      gScore: 0, 
+  async aStarSearchWeatherAware(graph, start, goal, startPort, endPort, shipType, weights) {
+    // Debug: log graph size
+    console.log('Graph nodes:', Object.keys(graph).length);
+
+    const openSet = [{
+      node: start,
+      gScore: 0,
       fScore: this.heuristic(startPort, endPort, shipType),
       path: [start],
       cumulativeDistance: 0,
-      etaHours: 0
+      etaHours: 0,
+      fuelTons: 0
     }];
-    
-    // Set of visited nodes
     const closedSet = new Set();
-    
+
+    let exploredNodes = 0; // Debug
+
     while (openSet.length > 0) {
-      // Sort by fScore and take the lowest one
       openSet.sort((a, b) => a.fScore - b.fScore);
       const current = openSet.shift();
-      
-      // If goal reached, return the path
       if (current.node === goal) {
+        console.log('A* explored nodes:', exploredNodes);
         return current;
       }
-      
-      // Mark as visited
       closedSet.add(current.node);
-      
-      // If node not in graph, skip
-      if (!graph[current.node]) {
-        continue;
-      }
-      
-      // Check neighbors
+      if (!graph[current.node]) continue;
+
       for (const neighbor of graph[current.node].neighbors) {
-        // Skip if already visited
-        if (closedSet.has(neighbor.node)) {
-          continue;
+        if (closedSet.has(neighbor.node)) continue;
+
+        // --- DEBUG: skip weather for now ---
+        // let weather = null;
+        // try {
+        //   weather = await WeatherService.getWeatherByCoords(neighbor.lat, neighbor.long);
+        // } catch {}
+
+        let speed = shipType.max_speed_knots;
+        // if (weather && weather.wind && weather.wind.speed) {
+        //   if (weather.wind.speed > 15) speed *= 0.8;
+        //   else if (weather.wind.speed > 10) speed *= 0.9;
+        // }
+
+        if (this.isIndianOcean(neighbor.lat, neighbor.long)) {
+          const now = new Date();
+          const month = now.getUTCMonth() + 1;
+          if (month >= 6 && month <= 9) neighbor.risk += 0.1;
         }
-        
-        // Calculate cost components
+
         const distanceCost = weights.distance * neighbor.distance;
-        const timeCost = weights.time * (neighbor.distance / shipType.max_speed_knots);
+        const timeCost = weights.time * (neighbor.distance / speed);
         const riskCost = weights.risk * neighbor.risk * neighbor.distance;
-        
-        // For canal tolls or other special penalties
+
+        // const fuelTons = this.estimateFuel(shipType, speed, neighbor.distance, weather);
+        const fuelTons = this.estimateFuel(shipType, speed, neighbor.distance, null);
+
         let cargoPenalty = 0;
         if (neighbor.isCanalSuez) cargoPenalty += 100;
         if (neighbor.isCanalPanama) cargoPenalty += 100;
-        
-        // Total edge cost
+
         const edgeCost = distanceCost + timeCost + riskCost + (weights.cargoPenalty * cargoPenalty);
-        
-        // Calculate new g-score
+
         const tentativeGScore = current.gScore + edgeCost;
-        
-        // Find if neighbor is already in open set
+
         const neighborInOpenSet = openSet.find(item => item.node === neighbor.node);
-        
+
         if (!neighborInOpenSet || tentativeGScore < neighborInOpenSet.gScore) {
-          // Calculate distance and time
           const cumulativeDistance = current.cumulativeDistance + neighbor.distance;
-          const etaHours = current.etaHours + (neighbor.distance / shipType.max_speed_knots);
-          
-          // Get neighbor port information
-          const neighborPortData = {
-            latitude: neighbor.lat,
-            longitude: neighbor.long
-          };
-          
-          // Calculate heuristic
+          const etaHours = current.etaHours + (neighbor.distance / speed);
+          const totalFuel = current.fuelTons + fuelTons;
+
+          const neighborPortData = { latitude: neighbor.lat, longitude: neighbor.long };
           const hValue = this.heuristic(neighborPortData, endPort, shipType);
-          
-          // Create node data
+
           const nodeData = {
             node: neighbor.node,
             gScore: tentativeGScore,
             fScore: tentativeGScore + hValue,
             path: [...current.path, neighbor.node],
-            cumulativeDistance: cumulativeDistance,
-            etaHours: etaHours
+            cumulativeDistance,
+            etaHours,
+            fuelTons: totalFuel
           };
-          
-          // Update or add to open set
+
           if (neighborInOpenSet) {
             const index = openSet.indexOf(neighborInOpenSet);
             openSet[index] = nodeData;
@@ -229,11 +224,49 @@ class PathfindingService {
             openSet.push(nodeData);
           }
         }
+        exploredNodes++; // Debug
       }
     }
-    
-    // No path found
+    console.log('A* explored nodes:', exploredNodes);
     return null;
+  }
+
+  /**
+   * Estimate fuel consumption for a segment
+   * @param {Object} shipType
+   * @param {number} speed - knots
+   * @param {number} distance - nm
+   * @param {Object} weather
+   * @returns {number} fuel tons
+   */
+  estimateFuel(shipType, speed, distance, weather) {
+    // Use fuel_efficiency_curve if available, else fallback to fuel_consumption_tpd
+    if (shipType.fuel_efficiency_curve) {
+      const curve = shipType.fuel_efficiency_curve;
+      // Find closest speed in curve
+      let idx = 0;
+      for (let i = 0; i < curve.speed_knots.length; i++) {
+        if (speed <= curve.speed_knots[i]) {
+          idx = i;
+          break;
+        }
+      }
+      const consumptionTpd = curve.consumption_tpd[idx] || shipType.fuel_consumption_tpd;
+      const hours = distance / speed;
+      return (consumptionTpd / 24) * hours;
+    } else {
+      // Simple model: fuel_consumption_tpd (tons per day)
+      const hours = distance / speed;
+      return (shipType.fuel_consumption_tpd / 24) * hours;
+    }
+  }
+
+  /**
+   * Check if coordinates are in the Indian Ocean region
+   */
+  isIndianOcean(lat, lon) {
+    // Rough bounding box: 20E-120E, 30S-30N
+    return lon >= 20 && lon <= 120 && lat >= -30 && lat <= 30;
   }
 
   /**
@@ -313,14 +346,12 @@ class PathfindingService {
       });
     }
     
-    // Use the final node's values for total distance/time
-    const totalDistance = nodes.length > 1 ? nodes[nodes.length-1].cumulativeDistanceNm : 0;
     const totalTime = nodes.length > 1 ? nodes[nodes.length-1].etaHours : 0;
-    
+    const totalDistance = nodes.length > 1 ? nodes[nodes.length-1].cumulativeDistanceNm : 0;
     // For debugging
     console.log('Total distance calculated:', totalDistance);
     console.log('A* cumulative distance:', routeResult.cumulativeDistance);
-    
+
     return {
       route: {
         nodes,

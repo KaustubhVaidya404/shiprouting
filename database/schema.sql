@@ -44,3 +44,16 @@ CREATE TABLE cargo_types (
     forbidden_edges TEXT[] DEFAULT '{}',
     notes TEXT
 );
+
+-- Weather snapshots table for caching and analytics
+CREATE TABLE IF NOT EXISTS weather_snapshots (
+    id SERIAL PRIMARY KEY,
+    lat DECIMAL(9,6) NOT NULL,
+    lon DECIMAL(9,6) NOT NULL,
+    timestamp INTEGER NOT NULL,
+    data JSONB NOT NULL
+);
+
+-- Enhanced ship profiles (add fuel efficiency curve)
+ALTER TABLE ship_types
+ADD COLUMN IF NOT EXISTS fuel_efficiency_curve JSONB; -- e.g., { "speed_knots": [10,12,14,16,18,20], "consumption_tpd": [60,70,80,100,120,150] }
